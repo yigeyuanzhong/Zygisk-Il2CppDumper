@@ -1,0 +1,46 @@
+name: 'Build Zygisk Module'
+description: 'Build Zygisk IL2CPP Dumper module with custom package name'
+inputs:
+  package_name:
+    description: 'Package name of the game'
+    required: true
+  java_version:
+    description: 'Java version to use'
+    required: false
+    default: '11'
+  distribution:
+    description: 'Java distribution'
+    required: false
+    default: 'temurin'
+  gradle_task:
+    description: 'Gradle task to run'
+    required: false
+    default: ':module:assembleRelease'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java_version }}
+        cache: gradle
+
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
+      shell: bash
+
+    - name: Update module description
+      run: |
+        sed -i 's/moduleDescription = "/moduleDescription = "(${{ inputs.package_name }}) /g' module.gradle
+      shell: bash
+
+    - name: Update package name in C++ header
+      run: |
+        sed -i "s/com.game.packagename/${{ inputs.package_name }}/g" module/src/main/cpp/game.h
+      shell: bash
+
+    - name: Build with Gradle
+      run: ./gradlew ${{ inputs.gradle_task }}
+      shell: bash
